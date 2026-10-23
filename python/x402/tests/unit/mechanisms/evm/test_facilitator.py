@@ -360,6 +360,28 @@ class TestVerify:
         assert result.is_valid is False
         assert result.invalid_reason == "invalid_exact_evm_non_canonical_signature"
 
+    def test_allows_high_s_deployed_wallet_signature(self):
+        account = Account.from_key("0x" + "a" * 64)
+        requirements = make_requirements()
+        inner_payload = ExactEvmClientScheme(account).create_payment_payload(requirements)
+        inner_payload["signature"] = make_high_s_signature(inner_payload["signature"])
+        payload = PaymentPayload(
+            x402_version=2,
+            resource=ResourceInfo(
+                url="http://example.com/protected",
+                description="Test resource",
+                mime_type="application/json",
+            ),
+            accepted=requirements,
+            payload=inner_payload,
+        )
+
+        result = ExactEvmFacilitatorScheme(MockFacilitatorSigner(code=b"\x60")).verify(
+            payload, requirements
+        )
+
+        assert result.is_valid is True
+
     def test_rejects_wrong_scheme(self):
         signer = MockFacilitatorSigner()
         facilitator = ExactEvmFacilitatorScheme(signer)
